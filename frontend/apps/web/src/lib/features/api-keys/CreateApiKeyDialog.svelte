@@ -755,8 +755,15 @@
     }
     if (apiKey.key_type === "pk_") {
       const origins = allowedOrigins.filter(Boolean);
+      // Block the round-trip when the admin emptied the origin list: backend
+      // requires at least one origin for pk_, and the fail-closed origin check
+      // would otherwise lock the key out the moment this PATCH lands.
+      if (origins.length === 0) {
+        errorMessage = m.api_keys_origin_required();
+        return;
+      }
       if (JSON.stringify(origins) !== JSON.stringify(apiKey.allowed_origins ?? [])) {
-        updates.allowed_origins = origins.length > 0 ? origins : null;
+        updates.allowed_origins = origins;
       }
     }
     if (apiKey.key_type === "sk_") {
@@ -1457,6 +1464,16 @@
                         </p>
                       {/if}
                     </div>
+                    {#if ownership === "service"}
+                      <div
+                        class="border-accent-default/30 bg-accent-dimmer/30 text-default rounded-lg border p-3 text-xs"
+                      >
+                        <span class="flex items-start gap-1.5">
+                          <Info class="mt-0.5 h-3.5 w-3.5 shrink-0" />
+                          <span>{m.api_keys_ownership_service_explainer()}</span>
+                        </span>
+                      </div>
+                    {/if}
                     {#if ownership === "service" && scopeType === "tenant" && (effectivePermission === "write" || effectivePermission === "admin")}
                       <div
                         class="border-warning-default/40 bg-warning-dimmer/40 text-warning-stronger dark:bg-warning-dimmer/20 rounded-lg border p-3 text-xs"
@@ -1464,16 +1481,6 @@
                         <span class="inline-flex items-center gap-1.5">
                           <AlertCircle class="h-3.5 w-3.5" />
                           {m.api_keys_ownership_service_guardrail_hint()}
-                        </span>
-                      </div>
-                    {/if}
-                    {#if ownership === "service"}
-                      <div
-                        class="border-label-default/30 bg-label-dimmer/40 text-secondary dark:bg-label-dimmer/20 rounded-lg border p-3 text-xs"
-                      >
-                        <span class="inline-flex items-start gap-1.5">
-                          <AlertCircle class="mt-0.5 h-3.5 w-3.5 flex-shrink-0" />
-                          <span>{m.api_keys_ownership_service_user_endpoints_hint()}</span>
                         </span>
                       </div>
                     {/if}
